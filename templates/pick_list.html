@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ pick_list.name }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='pick_list.css') }}">
+</head>
+
+<body>
+<div class="app-layout">
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">P</div>
+            <div>
+                <div class="brand-title">PickFlow</div>
+                <div class="brand-subtitle">Warehouse Tool</div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('index') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url_for('index') }}" class="nav-link">Active Pick Lists</a>
+            <a href="#" class="nav-link active">Scan Pick List</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+
+        <header class="page-header">
+            <div>
+                <a class="back-link" href="{{ url_for('index') }}">← Back to active lists</a>
+                <h1>{{ pick_list.name }}</h1>
+                <p>Scan each item, review the totals, then confirm completion.</p>
+            </div>
+
+            <div class="remaining-badge">
+                <span>Remaining</span>
+                <strong>{{ total_remaining }}</strong>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <section class="content-grid">
+
+            <div class="panel scan-panel">
+                <div class="panel-header">
+                    <h2>Scan Item</h2>
+                    <p>Keep the cursor in the box. Most scanners submit automatically.</p>
+                </div>
+
+                <div class="panel-body">
+                    <form action="{{ url_for('scan', pick_list_id=pick_list.id) }}" method="post" autocomplete="off">
+                        <label for="barcode">Barcode</label>
+
+                        <input
+                            id="barcode"
+                            class="scan-input"
+                            name="barcode"
+                            type="text"
+                            inputmode="none"
+                            autofocus
+                            required
+                            placeholder="Scan barcode"
+                        >
+
+                        <button type="submit" class="primary-btn">
+                            Confirm Scan
+                        </button>
+                    </form>
+
+                    {% if total_remaining == 0 %}
+                        <div class="complete-review-box">
+                            <div class="review-icon">✓</div>
+
+                            <div>
+                                <h3>All items scanned</h3>
+                                <p>Double-check the picked items before confirming this list complete.</p>
+
+                                <form method="POST" action="{{ url_for('confirm_complete', pick_list_id=pick_list.id) }}">
+                                    <button type="submit" class="complete-btn">
+                                        Confirm Pick List Complete
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="panel items-panel">
+                <div class="panel-header panel-header-row">
+                    <div>
+                        <h2>Pick Items</h2>
+                        <p>Item-level scan progress for this pick list.</p>
+                    </div>
+                </div>
+
+                <div class="table-wrap desktop-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Item Code</th>
+                                <th>Barcode</th>
+                                <th>Description</th>
+                                <th>Required</th>
+                                <th>Scanned</th>
+                                <th>Remaining</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for item in items %}
+                                <tr class="{{ 'complete-row' if item.qty_remaining == 0 else '' }}">
+                                    <td>
+                                        <div class="table-title">{{ item.item_code }}</div>
+                                    </td>
+
+                                    <td>
+                                        <span class="barcode-text">{{ item.barcode }}</span>
+                                    </td>
+
+                                    <td>{{ item.description }}</td>
+
+                                    <td class="qty">{{ item.qty_required }}</td>
+                                    <td class="qty">{{ item.qty_scanned }}</td>
+                                    <td class="qty">{{ item.qty_remaining }}</td>
+
+                                    <td>
+                                        {% if item.qty_remaining == 0 %}
+                                            <span class="status-pill complete">Complete</span>
+                                        {% else %}
+                                            <span class="status-pill open">Open</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mobile-item-list">
+                    {% for item in items %}
+                        <div class="mobile-item {{ 'complete' if item.qty_remaining == 0 else 'open' }}">
+                            <div class="mobile-topline">
+                                <div>
+                                    <div class="mobile-title">{{ item.item_code }}</div>
+                                    <div class="mobile-desc">{{ item.description }}</div>
+                                </div>
+
+                                {% if item.qty_remaining == 0 %}
+                                    <span class="status-pill complete">Complete</span>
+                                {% else %}
+                                    <span class="status-pill open">Open</span>
+                                {% endif %}
+                            </div>
+
+                            <div class="mobile-barcode">
+                                Barcode: {{ item.barcode }}
+                            </div>
+
+                            <div class="mobile-qty-grid">
+                                <div>
+                                    <span>Required</span>
+                                    <strong>{{ item.qty_required }}</strong>
+                                </div>
+
+                                <div>
+                                    <span>Scanned</span>
+                                    <strong>{{ item.qty_scanned }}</strong>
+                                </div>
+
+                                <div>
+                                    <span>Remaining</span>
+                                    <strong>{{ item.qty_remaining }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<script>
+    const barcodeInput = document.getElementById("barcode");
+
+    function focusScanner() {
+        if (barcodeInput) {
+            barcodeInput.focus();
+        }
+    }
+
+    focusScanner();
+
+    document.addEventListener("click", function () {
+        setTimeout(focusScanner, 50);
+    });
+</script>
+</body>
+</html>

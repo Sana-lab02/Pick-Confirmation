@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pick Confirmation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+</head>
+<body>
+<div class="app-layout">
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">P</div>
+            <div>
+                <div class="brand-title">PickFlow</div>
+                <div class="brand-subtitle">Warehouse Tool</div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-link active">Dashboard</a>
+            <a href="#" class="nav-link">Active Pick Lists</a>
+            <a href="#" class="nav-link">Upload</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <h1>Pick Confirmation Dashboard</h1>
+                <p>Upload, scan, verify, and manage pick lists.</p>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <section class="card-grid">
+            <div class="summary-card">
+                <div class="summary-label">Open Pick Lists</div>
+                <div class="summary-value">{{ pick_lists|length }}</div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-label">Total Required</div>
+                <div class="summary-value">
+                    {{ pick_lists|sum(attribute='total_required') if pick_lists else 0 }}
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-label">Total Scanned</div>
+                <div class="summary-value">
+                    {{ pick_lists|sum(attribute='total_scanned') if pick_lists else 0 }}
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-label">Total Remaining</div>
+                <div class="summary-value">
+                    {{ pick_lists|sum(attribute='total_remaining') if pick_lists else 0 }}
+                </div>
+            </div>
+        </section>
+
+        <section class="content-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Upload Pick List</h2>
+                    <p>Import a CSV exported from SAP.</p>
+                </div>
+
+                <div class="panel-body">
+                    <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+                        <label for="pick_list_name">Pick List Name</label>
+                        <input
+                            id="pick_list_name"
+                            name="pick_list_name"
+                            type="text"
+                            placeholder="Example: Pick 100245"
+                        >
+
+                        <label for="pick_file">CSV File</label>
+                        <input
+                            id="pick_file"
+                            name="pick_file"
+                            type="file"
+                            accept=".csv"
+                            required
+                        >
+
+                        <button type="submit" class="primary-btn">Upload Pick List</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="panel panel-table">
+                <div class="panel-header panel-header-row">
+                    <div>
+                        <h2>Active Pick Lists</h2>
+                        <p>Current lists that are still open or under review.</p>
+                    </div>
+                </div>
+
+                {% if pick_lists %}
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    <th>Required</th>
+                                    <th>Scanned</th>
+                                    <th>Remaining</th>
+                                    <th>Uploaded</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pick in pick_lists %}
+                                    <tr>
+                                        <td>
+                                            <div class="table-title">{{ pick.name }}</div>
+                                            <div class="table-subtitle">{{ pick.original_filename }}</div>
+                                        </td>
+                                        <td>
+                                            <span class="status-pill">
+                                                {{ pick.status.replace('_', ' ') }}
+                                            </span>
+                                        </td>
+                                        <td>{{ pick.total_required }}</td>
+                                        <td>{{ pick.total_scanned }}</td>
+                                        <td>{{ pick.total_remaining }}</td>
+                                        <td>{{ pick.uploaded_at }}</td>
+                                        <td>
+                                            <div class="table-actions">
+                                                <a class="table-link" href="{{ url_for('pick_list_detail', pick_list_id=pick.id) }}">
+                                                    Open
+                                                </a>
+
+                                                <form
+                                                    action="{{ url_for('delete_pick_list', pick_list_id=pick.id) }}"
+                                                    method="post"
+                                                    onsubmit="return confirm('Delete this pick list?');"
+                                                >
+                                                    <button class="ghost-danger" type="submit">Delete</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <h3>No active pick lists</h3>
+                        <p>Upload a CSV to get started.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

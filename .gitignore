@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.db
+.venv
+venv/
+routes/
+.pyc
+.csv
+.DS_Store
+
